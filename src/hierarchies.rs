@@ -37,6 +37,8 @@ use crate::cgroup::Cgroup;
 /// See `proc(5)` for format details.
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
 pub struct Mountinfo {
+    /// Mount root directory of the file system.
+    pub mount_root: PathBuf,
     /// Mount pathname relative to the process's root.
     pub mount_point: PathBuf,
     /// Filesystem type (main type with optional sub-type).
@@ -57,6 +59,7 @@ pub(crate) fn parse_mountinfo_for_line(line: &str) -> Option<Mountinfo> {
         return None;
     }
     let mount_point = PathBuf::from(s0_values[4]);
+    let mount_root = PathBuf::from(s0_values[3]);
     let fs_type_values: Vec<_> = s1_values[0].trim().split('.').collect();
     let fs_type = match fs_type_values.len() {
         1 => (fs_type_values[0].to_string(), None),
@@ -69,6 +72,7 @@ pub(crate) fn parse_mountinfo_for_line(line: &str) -> Option<Mountinfo> {
 
     let super_opts: Vec<String> = s1_values[2].trim().split(',').map(String::from).collect();
     Some(Mountinfo {
+        mount_root,
         mount_point,
         fs_type,
         super_opts,
@@ -123,47 +127,53 @@ impl Hierarchy for V1 {
         // The cgroup writeback feature requires cooperation between memcgs and blkcgs
         // To avoid exceptions, we should add_task for blkcg before memcg(push BlkIo before Mem)
         // For more Information: https://www.alibabacloud.com/help/doc-detail/155509.htm
-        if let Some(root) = self.get_mount_point(Controllers::BlkIo) {
-            subs.push(Subsystem::BlkIo(BlkIoController::new(root, false)));
+        if let Some((point, root)) = self.get_mount_point(Controllers::BlkIo) {
+            subs.push(Subsystem::BlkIo(BlkIoController::new(point, root, false)));
         }
-        if let Some(root) = self.get_mount_point(Controllers::Mem) {
-            subs.push(Subsystem::Mem(MemController::new(root, false)));
+        if let Some((point, root)) = self.get_mount_point(Controllers::Mem) {
+            subs.push(Subsystem::Mem(MemController::new(point, root, false)));
         }
-        if let Some(root) = self.get_mount_point(Controllers::Pids) {
-            subs.push(Subsystem::Pid(PidController::new(root, false)));
+        if let Some((point, root)) = self.get_mount_point(Controllers::Pids) {
+            subs.push(Subsystem::Pid(PidController::new(point, root, false)));
         }
-        if let Some(root) = self.get_mount_point(Controllers::CpuSet) {
-            subs.push(Subsystem::CpuSet(CpuSetController::new(root, false)));
+        if let Some((point, root)) = self.get_mount_point(Controllers::CpuSet) {
+            subs.push(Subsystem::CpuSet(CpuSetController::new(point, root, false)));
         }
-        if let Some(root) = self.get_mount_point(Controllers::CpuAcct) {
-            subs.push(Subsystem::CpuAcct(CpuAcctController::new(root)));
+        if let Some((point, root)) = self.get_mount_point(Controllers::CpuAcct) {
+            subs.push(Subsystem::CpuAcct(CpuAcctController::new(point, root)));
         }
-        if let Some(root) = self.get_mount_point(Controllers::Cpu) {
-            subs.push(Subsystem::Cpu(CpuController::new(root, false)));
+        if let Some((point, root)) = self.get_mount_point(Controllers::Cpu) {
+            subs.push(Subsystem::Cpu(CpuController::new(point, root, false)));
         }
-        if let Some(root) = self.get_mount_point(Controllers::Devices) {
-            subs.push(Subsystem::Devices(DevicesController::new(root)));
+        if let Some((point, root)) = self.get_mount_point(Controllers::Devices) {
+            subs.push(Subsystem::Devices(DevicesController::new(point, root)));
         }
-        if let Some(root) = self.get_mount_point(Controllers::Freezer) {
-            subs.push(Subsystem::Freezer(FreezerController::new(root, false)));
+        if let Some((point, root)) = self.get_mount_point(Controllers::Freezer) {
+            subs.push(Subsystem::Freezer(FreezerController::new(
+                point, root, false,
+            )));
         }
-        if let Some(root) = self.get_mount_point(Controllers::NetCls) {
-            subs.push(Subsystem::NetCls(NetClsController::new(root)));
+        if let Some((point, root)) = self.get_mount_point(Controllers::NetCls) {
+            subs.push(Subsystem::NetCls(NetClsController::new(point, root)));
         }
-        if let Some(root) = self.get_mount_point(Controllers::PerfEvent) {
-            subs.push(Subsystem::PerfEvent(PerfEventController::new(root)));
+        if let Some((point, root)) = self.get_mount_point(Controllers::PerfEvent) {
+            subs.push(Subsystem::PerfEvent(PerfEventController::new(point, root)));
         }
-        if let Some(root) = self.get_mount_point(Controllers::NetPrio) {
-            subs.push(Subsystem::NetPrio(NetPrioController::new(root)));
+        if let Some((point, root)) = self.get_mount_point(Controllers::NetPrio) {
+            subs.push(Subsystem::NetPrio(NetPrioController::new(point, root)));
         }
-        if let Some(root) = self.get_mount_point(Controllers::HugeTlb) {
-            subs.push(Subsystem::HugeTlb(HugeTlbController::new(root, false)));
+        if let Some((point, root)) = self.get_mount_point(Controllers::HugeTlb) {
+            subs.push(Subsystem::HugeTlb(HugeTlbController::new(
+                point, root, false,
+            )));
         }
-        if let Some(root) = self.get_mount_point(Controllers::Rdma) {
-            subs.push(Subsystem::Rdma(RdmaController::new(root)));
+        if let Some((point, root)) = self.get_mount_point(Controllers::Rdma) {
+            subs.push(Subsystem::Rdma(RdmaController::new(point, root)));
         }
-        if let Some(root) = self.get_mount_point(Controllers::Systemd) {
-            subs.push(Subsystem::Systemd(SystemdController::new(root, false)));
+        if let Some((point, root)) = self.get_mount_point(Controllers::Systemd) {
+            subs.push(Subsystem::Systemd(SystemdController::new(
+                point, root, false,
+            )));
         }
 
         subs
@@ -218,29 +228,51 @@ impl Hierarchy for V2 {
         for s in controller_list {
             match s {
                 "cpu" => {
-                    subs.push(Subsystem::Cpu(CpuController::new(self.root(), true)));
+                    subs.push(Subsystem::Cpu(CpuController::new(
+                        self.root(),
+                        PathBuf::from(""),
+                        true,
+                    )));
                 }
                 "io" => {
-                    subs.push(Subsystem::BlkIo(BlkIoController::new(self.root(), true)));
+                    subs.push(Subsystem::BlkIo(BlkIoController::new(
+                        self.root(),
+                        PathBuf::from(""),
+                        true,
+                    )));
                 }
                 "cpuset" => {
-                    subs.push(Subsystem::CpuSet(CpuSetController::new(self.root(), true)));
+                    subs.push(Subsystem::CpuSet(CpuSetController::new(
+                        self.root(),
+                        PathBuf::from(""),
+                        true,
+                    )));
                 }
                 "memory" => {
-                    subs.push(Subsystem::Mem(MemController::new(self.root(), true)));
+                    subs.push(Subsystem::Mem(MemController::new(
+                        self.root(),
+                        PathBuf::from(""),
+                        true,
+                    )));
                 }
                 "pids" => {
-                    subs.push(Subsystem::Pid(PidController::new(self.root(), true)));
+                    subs.push(Subsystem::Pid(PidController::new(
+                        self.root(),
+                        PathBuf::from(""),
+                        true,
+                    )));
                 }
                 "freezer" => {
                     subs.push(Subsystem::Freezer(FreezerController::new(
                         self.root(),
+                        PathBuf::from(""),
                         true,
                     )));
                 }
                 "hugetlb" => {
                     subs.push(Subsystem::HugeTlb(HugeTlbController::new(
                         self.root(),
+                        PathBuf::from(""),
                         true,
                     )));
                 }
@@ -275,10 +307,10 @@ impl V1 {
         }
     }
 
-    pub fn get_mount_point(&self, controller: Controllers) -> Option<PathBuf> {
+    pub fn get_mount_point(&self, controller: Controllers) -> Option<(PathBuf, PathBuf)> {
         self.mountinfo.iter().find_map(|m| {
             if m.fs_type.0 == "cgroup" && m.super_opts.contains(&controller.to_string()) {
-                return Some(m.mount_point.clone());
+                return Some((m.mount_point.to_owned(), m.mount_root.to_owned()));
             }
             None
         })
@@ -337,19 +369,19 @@ mod tests {
     fn test_parse_mount() {
         let mountinfo = vec![
             ("29 26 0:26 / /sys/fs/cgroup/cpuset,cpu,cpuacct rw,nosuid,nodev,noexec,relatime shared:10 - cgroup cgroup rw,cpuset,cpu,cpuacct",
-             Mountinfo{mount_point: PathBuf::from("/sys/fs/cgroup/cpuset,cpu,cpuacct"), fs_type: ("cgroup".to_string(), None), super_opts: vec![
+             Mountinfo{mount_root: PathBuf::from("/"), mount_point: PathBuf::from("/sys/fs/cgroup/cpuset,cpu,cpuacct"), fs_type: ("cgroup".to_string(), None), super_opts: vec![
                 "rw".to_string(),
                 "cpuset".to_string(),
                 "cpu".to_string(),
                 "cpuacct".to_string(),
              ]}),
             ("121 1731 0:42 / /shm rw,nosuid,nodev,noexec,relatime shared:68 master:66 - tmpfs shm rw,size=65536k",
-             Mountinfo{mount_point: PathBuf::from("/shm"), fs_type: ("tmpfs".to_string(), None), super_opts: vec![
+             Mountinfo{mount_root: PathBuf::from("/"), mount_point: PathBuf::from("/shm"), fs_type: ("tmpfs".to_string(), None), super_opts: vec![
                 "rw".to_string(),
                 "size=65536k".to_string(),
              ]}),
             ("121 1731 0:42 / /shm rw,nosuid,nodev,noexec,relatime shared:68 master:66 - tmpfs.123 shm rw,size=65536k",
-             Mountinfo{mount_point: PathBuf::from("/shm"), fs_type: ("tmpfs".to_string(), Some("123".to_string())), super_opts: vec![
+             Mountinfo{mount_root: PathBuf::from("/"), mount_point: PathBuf::from("/shm"), fs_type: ("tmpfs".to_string(), Some("123".to_string())), super_opts: vec![
                 "rw".to_string(),
                 "size=65536k".to_string(),
              ]}),

@@ -88,11 +88,11 @@ impl<'a> From<&'a Subsystem> for &'a HugeTlbController {
 
 impl HugeTlbController {
     /// Constructs a new `HugeTlbController` with `root` serving as the root of the control group.
-    pub fn new(root: PathBuf, v2: bool) -> Self {
+    pub fn new(point: PathBuf, root: PathBuf, v2: bool) -> Self {
         let sizes = get_hugepage_sizes();
         Self {
-            base: root.clone(),
-            path: root,
+            base: root,
+            path: point,
             sizes,
             v2,
         }

@@ -68,10 +68,10 @@ impl<'a> From<&'a Subsystem> for &'a RdmaController {
 
 impl RdmaController {
     /// Constructs a new `RdmaController` with `root` serving as the root of the control group.
-    pub fn new(root: PathBuf) -> Self {
+    pub fn new(point: PathBuf, root: PathBuf) -> Self {
         Self {
-            base: root.clone(),
-            path: root,
+            base: root,
+            path: point,
         }
     }
 

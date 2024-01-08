@@ -9,6 +9,7 @@
 use crate::error::ErrorKind::*;
 use crate::error::*;
 
+use crate::hierarchies::V1;
 use crate::{CgroupPid, ControllIdentifier, Controller, Hierarchy, Resources, Subsystem};
 
 use std::collections::HashMap;
@@ -586,6 +587,33 @@ pub fn get_cgroups_relative_paths() -> Result<HashMap<String, String>> {
 pub fn get_cgroups_relative_paths_by_pid(pid: u32) -> Result<HashMap<String, String>> {
     let path = format!("/proc/{}/cgroup", pid);
     get_cgroups_relative_paths_by_path(path)
+}
+
+fn get_cgroup_destination(mut mount_root: String, pidpath: String) -> String {
+    if mount_root == "/" {
+        mount_root = String::from("");
+    }
+    pidpath.trim_start_matches(&mount_root).to_string()
+}
+
+pub fn existing_path(paths: HashMap<String, String>) -> Result<HashMap<String, String>> {
+    let mount_roots_v1 = V1::new();
+    let mut mount_roots_subsystems_map = HashMap::new();
+
+    for s in mount_roots_v1.subsystems().iter() {
+        let controller_name = s.controller_name();
+        let path_from_cgroup = paths
+            .get(&controller_name)
+            .ok_or(Error::new(Common(format!(
+                "controller {} found in mountinfo, but not found in cgroup.",
+                controller_name
+            ))))?;
+        let path_from_mountinfo = s.to_controller().base().to_string_lossy().to_string();
+
+        let des_path = get_cgroup_destination(path_from_mountinfo, path_from_cgroup.to_owned());
+        mount_roots_subsystems_map.insert(controller_name, des_path);
+    }
+    Ok(mount_roots_subsystems_map)
 }
 
 fn get_cgroups_relative_paths_by_path(path: String) -> Result<HashMap<String, String>> {

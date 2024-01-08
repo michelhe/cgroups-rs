@@ -59,7 +59,6 @@ impl ControllerInternal for CpuController {
     fn get_path(&self) -> &PathBuf {
         &self.path
     }
-
     fn get_path_mut(&mut self) -> &mut PathBuf {
         &mut self.path
     }
@@ -113,10 +112,10 @@ impl<'a> From<&'a Subsystem> for &'a CpuController {
 
 impl CpuController {
     /// Contructs a new `CpuController` with `root` serving as the root of the control group.
-    pub fn new(root: PathBuf, v2: bool) -> Self {
+    pub fn new(point: PathBuf, root: PathBuf, v2: bool) -> Self {
         Self {
-            base: root.clone(),
-            path: root,
+            base: root,
+            path: point,
             v2,
         }
     }

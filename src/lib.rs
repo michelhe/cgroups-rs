@@ -255,6 +255,9 @@ pub trait Controller {
     /// The file system path to the controller.
     fn path(&self) -> &Path;
 
+    /// Root path of the file system to the controller.
+    fn base(&self) -> &Path;
+
     /// Apply a set of resources to the Controller, invoking its internal functions to pass the
     /// kernel the information.
     fn apply(&self, res: &Resources) -> Result<()>;
@@ -305,6 +308,10 @@ where
 
     fn path(&self) -> &Path {
         self.get_path()
+    }
+
+    fn base(&self) -> &Path {
+        self.get_base()
     }
 
     /// Apply a set of resources to the Controller, invoking its internal functions to pass the

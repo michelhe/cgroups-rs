@@ -84,14 +84,13 @@ impl<'a> From<&'a Subsystem> for &'a FreezerController {
 
 impl FreezerController {
     /// Contructs a new `FreezerController` with `root` serving as the root of the control group.
-    pub fn new(root: PathBuf, v2: bool) -> Self {
+    pub fn new(point: PathBuf, root: PathBuf, v2: bool) -> Self {
         Self {
-            base: root.clone(),
-            path: root,
+            base: root,
+            path: point,
             v2,
         }
     }
-
     /// Freezes the processes in the control group.
     pub fn freeze(&self) -> Result<()> {
         let mut file_name = "freezer.state";

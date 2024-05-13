@@ -254,10 +254,10 @@ fn parse_range(s: String) -> Result<Vec<(u64, u64)>> {
 
 impl CpuSetController {
     /// Contructs a new `CpuSetController` with `root` serving as the root of the control group.
-    pub fn new(root: PathBuf, v2: bool) -> Self {
+    pub fn new(point: PathBuf, root: PathBuf, v2: bool) -> Self {
         Self {
-            base: root.clone(),
-            path: root,
+            base: root,
+            path: point,
             v2,
         }
     }

@@ -92,10 +92,10 @@ impl<'a> From<&'a Subsystem> for &'a PidController {
 impl PidController {
     /// Constructors a new `PidController` instance, with `root` serving as the controller's root
     /// directory.
-    pub fn new(root: PathBuf, v2: bool) -> Self {
+    pub fn new(point: PathBuf, root: PathBuf, v2: bool) -> Self {
         Self {
-            base: root.clone(),
-            path: root,
+            base: root,
+            path: point,
             v2,
         }
     }
